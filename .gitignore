@@ -1,4 +1,6 @@
 .env
+.env.*
+!.env.example
 .venv/
 venv*/
 __pycache__/
@@ -9,3 +11,7 @@ schwab_token.json
 build/
 dist/
 .agent_worktrees/
+*.pem
+*.key
+credentials.json
+*.log

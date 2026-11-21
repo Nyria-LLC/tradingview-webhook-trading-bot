@@ -29,8 +29,8 @@ def test_scrubber_replaces_every_configured_secret():
 
 
 def test_scrubber_replaces_a_secret_that_contains_another_whole():
-    scrubber = Scrubber(SimpleNamespace(webhook_secret="abc", alpaca_api_key_id="abc-longer"))
-    assert scrubber.scrub("abc-longer and abc") == f"{REDACTED} and {REDACTED}"
+    scrubber = Scrubber(SimpleNamespace(webhook_secret="abcd", alpaca_api_key_id="abcd-longer"))
+    assert scrubber.scrub("abcd-longer and abcd") == f"{REDACTED} and {REDACTED}"
 
 
 def test_scrubber_takes_runtime_secrets_at_once():
@@ -41,6 +41,20 @@ def test_scrubber_takes_runtime_secrets_at_once():
     assert scrubber.scrub(text) == f"token {REDACTED} seen"
     scrubber.add("runtime-value-777")  # adding twice changes nothing
     assert scrubber.scrub(text) == f"token {REDACTED} seen"
+
+
+@pytest.mark.parametrize("value", ["a", "12", "abc"])
+def test_scrubber_ignores_values_shorter_than_four_characters(value):
+    text = "a 12 abc banana 123 and abc"
+    assert Scrubber(SimpleNamespace(webhook_secret=value)).scrub(text) == text
+    scrubber = Scrubber(SimpleNamespace())
+    scrubber.add(value)
+    assert scrubber.scrub(text) == text
+
+
+def test_scrubber_keeps_a_value_of_exactly_four_characters():
+    scrubber = Scrubber(SimpleNamespace(webhook_secret="abcd"))
+    assert scrubber.scrub("x abcd y") == f"x {REDACTED} y"
 
 
 @pytest.mark.parametrize("value", ["", None])

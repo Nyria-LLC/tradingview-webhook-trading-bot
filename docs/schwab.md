@@ -1,6 +1,6 @@
 # How to send TradingView alerts to Charles Schwab
 
-To send TradingView alerts to Charles Schwab, point the alert's webhook at this bot, install the bot's `schwab` extra and log in once with `python -m tvbot.schwab_login`. The bot builds each stock or ETF order with schwab-py and sends it to your account. This bot has no Schwab paper mode. Outside dry run, every order here is a real order, and it needs `SCHWAB_LIVE=true`.
+To send TradingView alerts to Charles Schwab, point the alert's webhook at this bot, install the bot's `schwab` extra and log in with `python -m tvbot.schwab_login`, then repeat that login every week. The bot builds each stock or ETF order with schwab-py and sends it to your account. This bot has no Schwab paper mode. Outside dry run, every order here is a real order, and it needs `SCHWAB_LIVE=true`.
 
 ## Prerequisites
 
@@ -69,7 +69,7 @@ A dry run previews a sell too. `SCHWAB_LIVE` and `SCHWAB_ALLOW_UNCHECKED_SELLS` 
 
 This bot has no Schwab paper mode. Dry run is the only rehearsal here.
 
-With your credentials set, `DRY_RUN=false` and `SCHWAB_LIVE=false`, the bot answers every order for this broker with 422:
+With `DRY_RUN=false`, `SCHWAB_LIVE=false` and the other Schwab variables set, the bot answers every order for this broker with 422:
 
 ```
 Schwab orders from this bot are real orders; set SCHWAB_LIVE=true to place them
@@ -123,7 +123,7 @@ Every broker request is checked by tests with mocked responses. No order has bee
 | 422 | `run python -m tvbot.schwab_login first; SCHWAB_TOKEN_PATH was not found` | Run the login command. Check `SCHWAB_TOKEN_PATH` points at the file it wrote. |
 | 422 | `SCHWAB_ACCOUNT_NUMBER is not one of the accounts this Schwab login can trade` | Compare `SCHWAB_ACCOUNT_NUMBER` with the accounts the login command printed. |
 | 424 | `"broker_status": <status>` | The broker refused the request. The error text carries its answer. |
-| 424 | `"broker_status": null` | The bot could not reach the broker. No order was sent. Send the alert again. |
+| 424 | `"broker_status": null` | The bot could not reach the broker, or your Schwab login has expired. No order was sent. Send the alert again. |
 | 504 | `outcome unknown (...); the order may have been placed. Check your Schwab orders.` | Check your orders at the broker before you resend. |
 
 If orders start failing with an auth error about a week after your last login, the token has expired. schwab-py says "requests for a new access token using a refresh token older than seven days are rejected with an invalid_client error". Run `python -m tvbot.schwab_login` again. The bot picks up the new token file on the next order.

@@ -92,7 +92,7 @@ Set a small `MAX_QTY` and an `ALLOWED_SYMBOLS` list before the first live alert.
 - Orders are whole shares. Tradier's trading reference defines quantity as "The number of shares to be ordered, in whole numbers." The bot answers 422 for a fractional quantity.
 - The bot reads your positions before every sell and sells only shares you hold long. Tradier reports a position's quantity with a sign: "positive numbers indicate long positions, negative numbers indicate short positions".
 - The position check does not subtract open sell orders. If a sell for those shares is already open at Tradier, a new sell still passes the check.
-- Tradier can refuse an order inside an HTTP 200. Its errors page says "the API sends back a 200 response for any error that is thrown by downstream systems", and that the body "will include an errors property". The bot reads that property and answers 424.
+- Tradier can put an error inside an HTTP 200 reply. Its errors page says "the API sends back a 200 response for any error that is thrown by downstream systems", and that the body "will include an errors property". The bot reads that property and answers 424.
 - A buy is always sent, even if you hold a short placed outside the bot.
 
 ## What has been tested
@@ -113,7 +113,7 @@ Every broker request is checked by tests with mocked responses. No order has bee
 | 424 | `"broker_status": 401` | Tradier describes 401 as "Authentication required or invalid credentials". Check the token belongs to the account the bot points at. |
 | 424 | `"broker_status": 403` or `404` | Tradier describes these as "Access denied to the requested resource" and "The requested resource was not found". Check `TRADIER_ACCOUNT_ID` and the token. |
 | 424 | `"broker_status": 400` | Tradier describes 400 as "Invalid request parameters or body". Check the symbol and the limit price. |
-| 424 | `"broker_status": 200` | Tradier took the request and a downstream system refused the order. The error text carries Tradier's reason. |
+| 424 | `"broker_status": 200` | Tradier's reply says the order was not accepted. The error text carries Tradier's reason. |
 | 424 | `"broker_status": null` | The bot could not reach Tradier, or a position read failed in transit. No order was sent. Send the alert again. |
 | 504 | `outcome unknown (...)` | The order may have been placed. The client id in the message is the order's `tag`. Check your Tradier orders before you resend. |
 

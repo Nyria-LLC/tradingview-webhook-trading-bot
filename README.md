@@ -136,7 +136,7 @@ For a limit order, set `"order_type": "limit"` and add a price, such as `"limit_
 
 `alert_id` exists for the duplicate guard. `{{timenow}}` is the alert's fire time to the nearest second, in UTC, such as `2019-08-27T09:56:00Z`. Separate firings get different bodies. A resend of one firing matches the first and is skipped. Keep the field in every alert.
 
-Reversing strategies need one change. When a strategy flips from long to short, TradingView puts the close and the new position into one order. A strategy holding 10 shares can send a sell of 20. The bot refuses a sell larger than your position, and a refused sell leaves the position open. Pick one fix:
+Reversing strategies need one change. When a strategy flips from long to short, TradingView puts the close and the new position into one order. A strategy holding 10 shares can send a sell of 20. At Alpaca, Tradier and tastytrade, the bot refuses a sell larger than your position, and a refused sell leaves the position open. Pick one fix:
 
 - Restrict the strategy to long trades with `strategy.risk.allow_entry_in(strategy.direction.long)`. TradingView's [strategy docs](https://www.tradingview.com/pine-script-docs/concepts/strategies/) say the strategy then "enters trades only in that direction", and an opposite entry "generates a market order to close the position without entering a new trade in that direction".
 - Set `CLAMP_SELLS=true`. The bot then sells the shares you hold. This works at Alpaca, Tradier and tastytrade.
@@ -214,6 +214,8 @@ Out of the box the bot places no order. Each step toward a live order is a setti
 | `DEDUPE_SECONDS` | `30` | The duplicate guard's window. `0` turns the guard off. |
 | `TRADINGVIEW_IPS_ONLY` | `false` | When `true`, only TradingView's published addresses can call `/webhook`. |
 
+MAX_QTY limits one alert only. The bot has no limit on total position size or on alerts per minute, so use your broker's own limits too.
+
 Sells at Alpaca, Tradier and tastytrade are checked against your long position first. A sell with no long position is refused. A sell larger than the position is refused too, or reduced to the position when `CLAMP_SELLS=true`. So the bot does not open shorts at those three brokers. `CLAMP_SELLS` applies to them only.
 
 The check has limits. At Tradier and tastytrade it does not subtract open sell orders. A refused sell is not retried. A buy is always sent, even if you hold a short placed outside the bot.
@@ -232,14 +234,18 @@ Keep the bot on 127.0.0.1 and put an HTTPS reverse proxy or tunnel in front of i
 
 1. Run one process with one worker, bound to 127.0.0.1.
 2. Terminate HTTPS at the proxy or tunnel on port 443 and forward to `http://127.0.0.1:8000`.
-3. Set the proxy's upstream timeout to at least 120 seconds, so it waits for the bot's answer.
+3. Set the proxy's upstream timeout to at least 120 seconds, so it waits for the bot's answer. Why 120 seconds: a tastytrade sell with a token refresh can take about 70 seconds at 10 seconds per call, and a Schwab order up to about 90 seconds at schwab-py's 30 seconds per call.
 4. Turn off proxy retries for POST, so one alert reaches the bot once.
 5. Keep a request-size limit at the proxy. The bot itself refuses bodies over 10,240 bytes.
 6. Generate the secret with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and treat it like a password. Anyone who has it can place orders.
 
-To use `TRADINGVIEW_IPS_ONLY=true` behind a proxy on the same machine, start uvicorn with `--proxy-headers --forwarded-allow-ips 127.0.0.1`. Never use `--forwarded-allow-ips '*'`: any caller could then pass the IP gate. If TradingView changes its addresses, alerts get 403 until you update `TRADINGVIEW_IPS` from TradingView's [webhook article](https://www.tradingview.com/support/solutions/43000529348-about-webhooks/).
+To use `TRADINGVIEW_IPS_ONLY=true` behind a proxy on the same machine, start uvicorn with `--proxy-headers --forwarded-allow-ips 127.0.0.1`. Never use `--forwarded-allow-ips '*'`: any caller could then pass the IP gate. If TradingView changes its addresses, alerts get 403 until you update `TRADINGVIEW_IPS` from TradingView's [webhook article](https://www.tradingview.com/support/solutions/43000529348-about-webhooks/). The IP gate is optional. Before you rely on it, check that real alerts still get through your proxy or tunnel.
 
-Two brokers need extra care on a server. The tastytrade adapter's first order after a start makes up to two extra calls: a token request, and a position read before a sell. Charles Schwab needs `python -m tvbot.schwab_login` every week, and its token file must stay private.
+Two brokers need extra care on a server. The tastytrade adapter's first order after a start makes up to two extra calls: a token request, and a position read before a sell. Charles Schwab needs `python -m tvbot.schwab_login` every week, and its token file must stay private. After the weekly Schwab login, the bot picks up the new token file on the next order.
+
+When the bot answers 424 because it could not reach the broker, TradingView doesn't retry that alert, so a network blip loses it. Check the alert log and send it again yourself.
+
+Logs are scrubbed of the secrets the bot knows about, but treat them as private anyway.
 
 Some duplicate-order risk remains. A proxy that answers 502 on its own after the order went out makes TradingView resend. The duplicate guard skips that resend inside its window, but not after the window or after a restart. The reverse case exists too: if two identical bodies arrive together and the first then fails, the second was already answered as a duplicate, and no order is placed.
 
@@ -259,7 +265,7 @@ Every response is JSON with an `ok` field. The bot never answers with a 5xx stat
 | 405 | `{"ok": false, "error": "method not allowed"}` | Wrong method, such as GET on `/webhook`. |
 | 413 | `{"ok": false, "error": "body too large"}` | The body is over 10,240 bytes. |
 | 422 | `{"ok": false, "error": "<message>"}` | The alert broke a rule, a guard refused the order, or the broker is not configured. |
-| 424 | `{"ok": false, "error": "<broker message>", "broker_status": <status or null>}` | The broker refused the order, or the bot could not reach it. Nothing was placed. |
+| 424 | `{"ok": false, "error": "<broker message>", "broker_status": <status or null>}` | The broker refused the order, or the bot stopped before sending it, for example because it could not reach the broker. |
 | 424 | `{"ok": false, "error": "unexpected error, see server log"}` | An unexpected error. The details are in the bot's log. |
 | 504 | `{"ok": false, "error": "outcome unknown (<reason>); the order may have been placed. Check your broker for client id <id>"}` | A timeout, a broken connection or a broker 5xx after the order was sent. Check the broker before you resend. |
 

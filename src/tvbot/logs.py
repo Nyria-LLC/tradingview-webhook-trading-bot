@@ -10,6 +10,7 @@ REDACTED = "<redacted>"
 LOGGER_NAME = "tvbot"
 _HANDLER_MARK = "_tvbot_stream_handler"
 _QUIET_LOGGERS = ("httpx", "httpcore", "schwab", "authlib")
+_MIN_SECRET_LENGTH = 4  # shorter values would mangle unrelated log text
 
 
 class Scrubber:
@@ -35,7 +36,7 @@ class Scrubber:
 
     def add(self, value: str | None) -> None:
         """Register a secret; later registrations (runtime tokens, hashes) take effect at once."""
-        if not value:
+        if not value or len(value) < _MIN_SECRET_LENGTH:
             return
         with self._lock:
             if value not in self._values:
