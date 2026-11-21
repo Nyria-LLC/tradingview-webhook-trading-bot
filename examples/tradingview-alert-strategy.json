@@ -1,0 +1,10 @@
+{
+  "secret": "paste-your-WEBHOOK_SECRET-here",
+  "alert_id": "{{timenow}}",
+  "broker": "alpaca",
+  "symbol": "{{ticker}}",
+  "action": "{{strategy.order.action}}",
+  "quantity": "{{strategy.order.contracts}}",
+  "order_type": "market",
+  "time_in_force": "day"
+}
