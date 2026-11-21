@@ -124,7 +124,8 @@ class TradierBroker(Broker):
             raise BrokerRejected(status, errors_text(body["errors"]))
         order = body.get("order") if isinstance(body, dict) else None
         if not isinstance(order, dict):
-            raise BrokerRejected(status, "unexpected response from Tradier")
+            # A 2xx means Tradier accepted the request, so an unreadable reply does not prove a refusal.
+            raise OutcomeUnknown(cid, "unexpected response from Tradier")
         order_id = None
         if order.get("status") == "ok" and order.get("id") is not None:
             order_id = str(order["id"])

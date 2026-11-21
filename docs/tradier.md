@@ -115,6 +115,6 @@ Every broker request is checked by tests with mocked responses. No order has bee
 | 424 | `"broker_status": 400` | Tradier describes 400 as "Invalid request parameters or body". Check the symbol and the limit price. |
 | 424 | `"broker_status": 200` | Tradier's reply says the order was not accepted. The error text carries Tradier's reason. |
 | 424 | `"broker_status": null` | The bot could not reach Tradier, or a position read failed in transit. No order was sent. Send the alert again. |
-| 504 | `outcome unknown (...)` | The order may have been placed. The client id in the message is the order's `tag`. Check your Tradier orders before you resend. |
+| 504 | `outcome unknown (...)` | The order may have been placed: Tradier answered with a 5xx, the connection broke after the order was sent, or a 2xx reply carried neither an order nor an error. The client id in the message is the order's `tag`. Check your Tradier orders before you resend. |
 
 Hosted alternative: [Nyria](https://nyria.io/automate/tradingview-to-tradier?utm_source=github&utm_medium=docs&utm_campaign=tradingview-webhook-trading-bot) turns TradingView alerts into orders in your own brokerage account, with a free paper account to test first.

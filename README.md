@@ -132,6 +132,8 @@ For a strategy alert, use [examples/tradingview-alert-strategy.json](examples/tr
 
 Upper and lower case both work for `broker`, `symbol`, `action`, `order_type` and `time_in_force`. Fields the bot doesn't know are ignored.
 
+Share-class tickers such as BRK.B pass through as sent. If your broker spells the symbol differently in its position list, the bot refuses the sell instead of guessing.
+
 For a limit order, set `"order_type": "limit"` and add a price, such as `"limit_price": "{{close}}"`. The bot passes the price to the broker as given and does not round it.
 
 `alert_id` exists for the duplicate guard. `{{timenow}}` is the alert's fire time to the nearest second, in UTC, such as `2019-08-27T09:56:00Z`. Separate firings get different bodies. A resend of one firing matches the first and is skipped. Keep the field in every alert.
@@ -237,7 +239,8 @@ Keep the bot on 127.0.0.1 and put an HTTPS reverse proxy or tunnel in front of i
 3. Set the proxy's upstream timeout to at least 120 seconds, so it waits for the bot's answer. Why 120 seconds: a tastytrade sell with a token refresh can take about 70 seconds at 10 seconds per call, and a Schwab order up to about 90 seconds at schwab-py's 30 seconds per call.
 4. Turn off proxy retries for POST, so one alert reaches the bot once.
 5. Keep a request-size limit at the proxy. The bot itself refuses bodies over 10,240 bytes.
-6. Generate the secret with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and treat it like a password. Anyone who has it can place orders.
+6. Use a proxy that buffers the request body and closes slow uploads; the bot itself sets no read deadline.
+7. Generate the secret with `python -c "import secrets; print(secrets.token_urlsafe(32))"` and treat it like a password. Anyone who has it can place orders.
 
 To use `TRADINGVIEW_IPS_ONLY=true` behind a proxy on the same machine, start uvicorn with `--proxy-headers --forwarded-allow-ips 127.0.0.1`. Never use `--forwarded-allow-ips '*'`: any caller could then pass the IP gate. If TradingView changes its addresses, alerts get 403 until you update `TRADINGVIEW_IPS` from TradingView's [webhook article](https://www.tradingview.com/support/solutions/43000529348-about-webhooks/). The IP gate is optional. Before you rely on it, check that real alerts still get through your proxy or tunnel.
 

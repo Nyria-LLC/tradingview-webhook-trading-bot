@@ -278,11 +278,18 @@ def test_errors_win_over_an_order_in_the_same_answer():
         reply(204),
     ],
 )
-def test_an_answer_without_an_order_object_is_a_424(answer):
-    client, _ = build_live(order_router(answer))
+def test_a_2xx_answer_without_an_order_object_or_errors_is_a_504_and_kept(answer):
+    router = order_router(answer)
+    client, _ = build_live(router, {"DEDUPE_SECONDS": "30"})
     response = post(client, tradier())
-    assert response.status_code == 424
-    assert response.json()["error"] == "unexpected response from Tradier"
+    tag = body_form(sent_order(router))["tag"]
+    assert response.status_code == 504
+    assert response.json() == {
+        "ok": False,
+        "error": f"outcome unknown (unexpected response from Tradier); the order may have been placed. Check your broker for client id {tag}",
+    }
+    assert post(client, tradier()).json() == {"ok": True, "duplicate": True}  # the same alert is not resent
+    assert len(router.sent("POST", ORDERS)) == 1
 
 
 @pytest.mark.parametrize(
