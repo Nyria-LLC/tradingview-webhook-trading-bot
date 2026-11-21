@@ -250,6 +250,8 @@ When the bot answers 424 because it could not reach the broker, TradingView does
 
 Logs are scrubbed of the secrets the bot knows about, but treat them as private anyway.
 
+A captured alert body contains the secret and can be replayed after the duplicate window, so keep TLS on, keep logs private, and change the secret if a body leaks.
+
 Some duplicate-order risk remains. A proxy that answers 502 on its own after the order went out makes TradingView resend. The duplicate guard skips that resend inside its window, but not after the window or after a restart. The reverse case exists too: if two identical bodies arrive together and the first then fails, the second was already answered as a duplicate, and no order is placed.
 
 ## Responses
